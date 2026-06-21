@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Upload</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh}
+  .container{max-width:800px;margin:0 auto;padding:2rem 1rem}
+  h1{font-size:1.75rem;font-weight:700;margin-bottom:0.25rem}
+  .subtitle{color:#94a3b8;margin-bottom:2rem}
+  .folders{display:flex;flex-wrap:wrap;gap:1rem;justify-content:center;margin-bottom:2rem}.folders>*{flex:1 1 200px;max-width:250px}
+  .folder-card{background:#1e293b;border:2px solid #334155;border-radius:0.75rem;padding:1.5rem;cursor:pointer;transition:all .2s;text-align:center}
+  .folder-card:hover{border-color:#6366f1;background:#1e293b;transform:translateY(-2px);box-shadow:0 4px 12px rgba(99,102,241,0.3)}
+  .folder-card.active{border-color:#6366f1;background:#1e293b;box-shadow:0 0 0 3px rgba(99,102,241,0.3)}
+  .folder-card .icon-wrapper{display:flex;align-items:center;justify-content:center;margin-bottom:0.75rem}
+  .folder-card .icon-circle{width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.25rem;font-weight:700;color:#fff}
+  .folder-card .label{font-size:1.125rem;font-weight:600}
+  .folder-card .path{font-size:0.75rem;color:#64748b;margin-top:0.25rem;word-break:break-all}
+  .upload-zone{background:#1e293b;border:2px dashed #334155;border-radius:0.75rem;padding:3rem 2rem;text-align:center;transition:all .2s}
+  .upload-zone.dragover{border-color:#6366f1;background:rgba(99,102,241,0.1)}
+  .upload-zone .icon{font-size:3rem;margin-bottom:1rem;opacity:0.5}
+  .upload-zone p{color:#94a3b8;margin-bottom:1rem}
+  .upload-zone .selected-folder{color:#6366f1;font-weight:600}
+  .file-input{display:none}
+  .btn{display:inline-block;padding:0.625rem 1.5rem;background:#6366f1;color:#fff;border:none;border-radius:0.5rem;font-size:0.875rem;font-weight:600;cursor:pointer;transition:background .2s}
+  .btn:hover{background:#4f46e5}
+  .btn:disabled{opacity:0.5;cursor:not-allowed}
+  .status{margin-top:1.5rem;padding:1rem;border-radius:0.5rem;display:none}
+  .status.success{display:block;background:#065f46;border:1px solid #059669;color:#a7f3d0}
+  .status.error{display:block;background:#7f1d1d;border:1px solid #dc2626;color:#fca5a5}
+  .uploads{margin-top:2rem}
+  .uploads h2{font-size:1.25rem;margin-bottom:1rem;color:#94a3b8}
+  .uploads table{width:100%;border-collapse:collapse}
+  .uploads th,.uploads td{text-align:left;padding:0.5rem 0.75rem;border-bottom:1px solid #334155;font-size:0.875rem}
+  .uploads th{color:#64748b;font-weight:600;text-transform:uppercase;font-size:0.75rem;letter-spacing:0.05em}
+  .uploads td{color:#e2e8f0}
+  .badge{display:inline-block;padding:0.125rem 0.5rem;border-radius:9999px;font-size:0.75rem;background:#334155;color:#94a3b8}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Upload</h1>
+  <p class="subtitle">Déposez un fichier dans un dossier</p>
+
+  <div class="folders" id="folders"></div>
+
+  <div class="upload-zone" id="dropzone">
+    <div class="icon">📁</div>
+    <p>Déposez votre fichier ici</p>
+    <p>ou</p>
+    <button class="btn" id="selectBtn" disabled>Sélectionner un fichier</button>
+    <input type="file" class="file-input" id="fileInput" accept=".torrent">
+    <p style="margin-top:1rem;font-size:0.8rem;color:#64748b" id="selectedInfo">Aucun dossier sélectionné</p>
+  </div>
+
+  <div class="status" id="status"></div>
+
+  <div class="uploads" id="uploadsSection" style="display:none">
+    <h2>Fichiers uploadés</h2>
+    <table>
+      <thead><tr><th>Fichier</th><th>Dossier</th><th>Taille</th><th>Date</th></tr></thead>
+      <tbody id="uploadsBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const colors = ['#6366f1', '#ec4899', '#14b8a6', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#84cc16'];
+let selectedLabel = null;
+let folders = [];
+
+fetch('/api/config')
+  .then(r => r.json())
+  .then(data => {
+    folders = data;
+    renderFolders(data);
+  });
+
+function renderFolders(folders) {
+  const container = document.getElementById('folders');
+  container.innerHTML = folders.map((f, i) => `
+    <div class="folder-card" data-label="${f.label}" onclick="selectFolder('${f.label}')">
+      <div class="icon-wrapper"><div class="icon-circle" style="background:${colors[i % colors.length]}">${f.label[0]}</div></div>
+      <div class="label">${f.label}</div>
+    </div>
+  `).join('');
+}
+
+function selectFolder(label) {
+  selectedLabel = label;
+  document.querySelectorAll('.folder-card').forEach(el => {
+    el.classList.toggle('active', el.dataset.label === label);
+  });
+  document.getElementById('selectedInfo').textContent = `Dossier sélectionné : ${label}`;
+  document.getElementById('selectBtn').disabled = false;
+}
+
+document.getElementById('selectBtn').addEventListener('click', () => {
+  document.getElementById('fileInput').click();
+});
+
+document.getElementById('fileInput').addEventListener('change', (e) => {
+  if (e.target.files.length > 0) {
+    uploadFile(e.target.files[0]);
+  }
+});
+
+const dropzone = document.getElementById('dropzone');
+dropzone.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  dropzone.classList.add('dragover');
+});
+dropzone.addEventListener('dragleave', () => {
+  dropzone.classList.remove('dragover');
+});
+dropzone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropzone.classList.remove('dragover');
+  if (e.dataTransfer.files.length > 0) {
+    uploadFile(e.dataTransfer.files[0]);
+  }
+});
+
+function uploadFile(file) {
+  const status = document.getElementById('status');
+  status.className = 'status';
+  status.style.display = 'none';
+
+  if (!file.name.toLowerCase().endsWith('.torrent')) {
+    showStatus('error', 'Type de fichier non autorisé');
+    return;
+  }
+
+  if (!selectedLabel) {
+    showStatus('error', 'Veuillez d\'abord sélectionner un dossier');
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  showStatus('success', 'Upload en cours...');
+
+  fetch(`/api/upload/${encodeURIComponent(selectedLabel)}`, {
+    method: 'POST',
+    body: formData
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.success) {
+      showStatus('success', `${data.filename} uploadé avec succès dans ${data.folder}`);
+      document.getElementById('fileInput').value = '';
+      loadUploads();
+    } else {
+      showStatus('error', data.error || 'Erreur lors de l\'upload');
+    }
+  })
+  .catch(err => {
+    showStatus('error', 'Erreur réseau : ' + err.message);
+  });
+}
+
+function showStatus(type, msg) {
+  const el = document.getElementById('status');
+  el.className = 'status ' + type;
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function loadUploads() {
+  fetch('/api/uploads')
+    .then(r => r.json())
+    .then(data => {
+      if (data.length === 0) return;
+      document.getElementById('uploadsSection').style.display = 'block';
+      const tbody = document.getElementById('uploadsBody');
+      tbody.innerHTML = data.map(u => `
+        <tr>
+          <td>${u.file_name}</td>
+          <td><span class="badge">${u.folder}</span></td>
+          <td>${(u.size / 1024).toFixed(1)} Ko</td>
+          <td>${new Date(u.uploaded_at).toLocaleString('fr-FR')}</td>
+        </tr>
+      `).join('');
+    });
+}
+
+loadUploads();
+</script>
+</body>
+</html>

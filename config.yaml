@@ -1,0 +1,12 @@
+server:
+  host: "0.0.0.0"
+  port: 8080
+  max_file_size: "1MiB"
+
+folders:
+  - label: "PH"
+    path: "/storage/ph"
+  - label: "Jean"
+    path: "/storage/jean"
+  - label: "HTTP"
+    path: "/storage/http"
